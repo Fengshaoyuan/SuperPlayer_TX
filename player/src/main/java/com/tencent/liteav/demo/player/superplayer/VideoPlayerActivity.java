@@ -11,7 +11,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.widget.SwipeRefreshLayout;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -19,20 +18,13 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.tencent.liteav.demo.player.R;
-import com.tencent.liteav.demo.player.common.utils.TCConstants;
-import com.tencent.liteav.demo.player.server.GetVideoInfoListListener;
-import com.tencent.liteav.demo.player.server.VideoDataMgr;
-import com.tencent.liteav.demo.player.server.VideoInfo;
-import com.tencent.liteav.basic.log.TXCLog;
 import com.tencent.liteav.demo.play.SuperPlayerConst;
 import com.tencent.liteav.demo.play.SuperPlayerGlobalConfig;
 import com.tencent.liteav.demo.play.SuperPlayerModel;
 import com.tencent.liteav.demo.play.SuperPlayerView;
 import com.tencent.liteav.demo.play.v3.SuperPlayerVideoId;
-import com.tencent.rtmp.TXLiveBase;
 import com.tencent.rtmp.TXLiveConstants;
 
 import java.util.ArrayList;
@@ -46,39 +38,18 @@ import static android.view.View.VISIBLE;
  * 超级播放器主Activity
  */
 public class VideoPlayerActivity extends Activity implements
-        SuperVodListLoader.OnVodInfoLoadListener,
-        SuperPlayerView.OnSuperPlayerViewCallback,
-        TCVodPlayerListAdapter.OnItemClickLitener,
-        SwipeRefreshLayout.OnRefreshListener {
+        SuperPlayerView.OnSuperPlayerViewCallback {
     // 新手引导的标记
     private static final String SHARE_PREFERENCE_NAME = "tx_super_player_guide_setting";
     private static final String KEY_GUIDE_ONE = "is_guide_one_finish";
     private static final String KEY_GUIDE_TWO = "is_guide_two_finish";
-
     private static final String TAG = "VideoPlayerActivity";
-    private static final int LIST_TYPE_LIVE = 0;
-    private static final int LIST_TYPE_VOD = 1;
 
     private Context mContext;
     //超级播放器View
     private SuperPlayerView mSuperPlayerView;
-    private TCVodPlayerListAdapter mVodPlayerListAdapter;
     //进入默认播放的视频
-    private int DEFAULT_APPID = 1252463788;
-    //获取点播信息接口
-    private SuperVodListLoader mSuperVodListLoader;
-
-    //上传文件列表
-    private boolean mDefaultVideo;
-    private String mVideoId;
-    private GetVideoInfoListListener mGetVideoInfoListListener;
-
-    private ArrayList<VideoModel> mLiveList;
-    private ArrayList<VideoModel> mVodList;
-    private int mDataType = LIST_TYPE_LIVE;
-    private int mVideoCount;
-    private boolean mVideoHasPlay;
-
+    private int DEFAULT_APP_ID = 1252463788;
     private RelativeLayout mRlMaskOne, mRlMaskTwo;
     private TextView mTvBtnOne, mTvBtnTwo;
 
@@ -92,9 +63,6 @@ public class VideoPlayerActivity extends Activity implements
         checkPermission();
         initView();
         initData();
-
-        mDataType = mDefaultVideo ? LIST_TYPE_LIVE : LIST_TYPE_VOD;
-        updateList(mDataType);
     }
 
     @Override
@@ -118,13 +86,8 @@ public class VideoPlayerActivity extends Activity implements
     }
 
     private void initView() {
-
         mSuperPlayerView = (SuperPlayerView) findViewById(R.id.p_superVodPlayerView);
         mSuperPlayerView.setPlayerViewCallback(this);
-
-        mVodPlayerListAdapter = new TCVodPlayerListAdapter(this);
-        mVodPlayerListAdapter.setOnItemClickLitener(this);
-
         initNewGuideLayout();
     }
 
@@ -184,124 +147,20 @@ public class VideoPlayerActivity extends Activity implements
                 SharePreferenceUtils.putBoolean(s, KEY_GUIDE_TWO, true);
             }
         });
-
     }
 
     private void initData() {
-        mLiveList = new ArrayList<>();
-        mVodList = new ArrayList<>();
-        mDefaultVideo = getIntent().getBooleanExtra(TCConstants.PLAYER_DEFAULT_VIDEO, true);
-        mSuperVodListLoader = new SuperVodListLoader();
-        mSuperVodListLoader.setOnVodInfoLoadListener(this);
-
         initSuperVodGlobalSetting();
-
-        mVideoHasPlay = false;
-
-        mVideoCount = 0;
-
-        TXLiveBase.setAppID("1253131631");
-    }
-
-    private void updateLiveList() {
-        mLiveList.clear();
-        mSuperVodListLoader.getLiveList(new SuperVodListLoader.OnListLoadListener() {
-            @Override
-            public void onSuccess(final ArrayList<VideoModel> superPlayerModelList) {
-
-                VideoPlayerActivity.this.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (mDataType != LIST_TYPE_LIVE) return;
-                        mVodPlayerListAdapter.clear();
-                        for (VideoModel videoModel :
-                                superPlayerModelList) {
-                            mVodPlayerListAdapter.addSuperPlayerModel(videoModel);
-                            mLiveList.add(videoModel);
-                        }
-                        if (!mVideoHasPlay && !mLiveList.isEmpty()) {
-                            if (mLiveList.get(0).appid > 0) {
-                                TXLiveBase.setAppID("" + mLiveList.get(0).appid);
-                            }
-                            playVideoModel(mLiveList.get(0));
-                            mVideoHasPlay = true;
-                        }
-                        mVodPlayerListAdapter.notifyDataSetChanged();
-
-                    }
-                });
-            }
-
-            @Override
-            public void onFail(int errCode) {
-                TXCLog.e(TAG, "updateLiveList error");
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                    }
-                });
-            }
-        });
-        mVodPlayerListAdapter.notifyDataSetChanged();
-
-    }
-
-    private void updateVodList() {
-        if (mDefaultVideo) {
-            mVodList.clear();
-            ArrayList<VideoModel> superPlayerModels = mSuperVodListLoader.loadDefaultVodList();
-            mSuperVodListLoader.getVodInfoOneByOne(superPlayerModels);
-
-        } else {
-            mVideoId = getIntent().getStringExtra(TCConstants.PLAYER_VIDEO_ID);
-            if (!TextUtils.isEmpty(mVideoId)) {
-                playDefaultVideo(TCConstants.VOD_APPID, mVideoId);
-                mVideoHasPlay = true;
-            }
-
-            mGetVideoInfoListListener = new GetVideoInfoListListener() {
-                @Override
-                public void onGetVideoInfoList(final List<VideoInfo> videoInfoList) {
-                    if (mDataType != LIST_TYPE_VOD) return;
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            mVodPlayerListAdapter.clear();
-                            mVodPlayerListAdapter.notifyDataSetChanged();
-                            ArrayList<VideoModel> videoModels = VideoDataMgr.getInstance().loadVideoInfoList(videoInfoList);
-                            if (videoModels != null && videoModels.size() != 0) {
-                                mSuperVodListLoader.getVodInfoOneByOne(videoModels);
-                            }
-                        }
-                    });
-                }
-
-                @Override
-                public void onFail(int errCode) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(mContext, "获取已上传的视频列表失败", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
-            };
-
-            mVodList.clear();
-            VideoDataMgr.getInstance().setGetVideoInfoListListener(mGetVideoInfoListListener);
-            VideoDataMgr.getInstance().getVideoList();
-        }
-    }
-
-    private void playDefaultVideo(int appId, String fileId) {
         VideoModel videoModel = new VideoModel();
-        videoModel.appid = appId;
-        videoModel.fileid = fileId;
-        videoModel.title = "小视频-特效剪辑";
-        if (videoModel.appid > 0) {
-            TXLiveBase.setAppID("" + videoModel.appid);
-        }
+        videoModel.appid = DEFAULT_APP_ID;
+        videoModel.fileid = getIntent().getStringExtra("PLAY_TYPE");
+        videoModel.title = "测试视频";
+        videoModel.videoURL = "http://aliyuncdnct.inter.iqiyi.com/videos/v0/20191129/15/91/dee0bd77af731e45c3eafbb5fb580534.f4v?key=0c81e23151f619148602a6af95d61c348&dis_k=f9f1cf3bb16e91eeff340a1cfe1b6a25&dis_t=1575982378&dis_dz=CT-ShanDong_QingDao&dis_st=103&src=iqiyi.com&dis_hit=0&uuid=3a38a81e-5def952a-fe&qd_vipres=0&qd_stert=0&qd_vipdyn=0&qd_p=3a38a81e&qd_tvid=9669691800&qd_src=01012001010000000000&qd_aid=248443601&qd_index=1&qd_vip=0&qd_ip=3a38a81e&qd_uid=0&qd_k=3e3f9bcafe273ff2f4b6f280d10be795&qd_tm=1575982378666";
+        videoModel.multiVideoURLs = new ArrayList<>();
+        videoModel.multiVideoURLs.add(new VideoModel.VideoPlayerURL("蓝光", "http://aliyuncdnct.inter.iqiyi.com/videos/v0/20191129/15/91/dee0bd77af731e45c3eafbb5fb580534.f4v?key=0c81e23151f619148602a6af95d61c348&dis_k=f9f1cf3bb16e91eeff340a1cfe1b6a25&dis_t=1575982378&dis_dz=CT-ShanDong_QingDao&dis_st=103&src=iqiyi.com&dis_hit=0&uuid=3a38a81e-5def952a-fe&qd_vipres=0&qd_stert=0&qd_vipdyn=0&qd_p=3a38a81e&qd_tvid=9669691800&qd_src=01012001010000000000&qd_aid=248443601&qd_index=1&qd_vip=0&qd_ip=3a38a81e&qd_uid=0&qd_k=3e3f9bcafe273ff2f4b6f280d10be795&qd_tm=1575982378666"));
+        videoModel.multiVideoURLs.add(new VideoModel.VideoPlayerURL("超清", "http://jcloudcdnct.inter.iqiyi.com/videos/v0/20191129/b7/ae/60697bba7c71c60f02a2ff4ac098e593.f4v?key=0431d0dcb570c3346602a6af95d61c348&dis_k=2e4dd4424532e9a9b1750c54447e05d9&dis_t=1575982378&dis_dz=CT-ShanDong_QingDao&dis_st=103&src=iqiyi.com&dis_hit=0&uuid=3a38a81e-5def952a-fa&qd_vipres=0&qd_stert=0&qd_vipdyn=0&qd_p=3a38a81e&qd_tvid=9669691800&qd_src=01012001010000000000&qd_aid=248443601&qd_index=1&qd_vip=0&qd_ip=3a38a81e&qd_uid=0&qd_k=3e3f9bcafe273ff2f4b6f280d10be795&qd_tm=1575982378666"));
+        videoModel.multiVideoURLs.add(new VideoModel.VideoPlayerURL("高清", "http://baiducdnct.inter.iqiyi.com/videos/v0/20191129/5e/ac/bb373f5a4a1ee4bef6bf35690a2148e9.f4v?key=04b98c12268a34985b6db646164158326&dis_k=1362daffadf079b9ef39f2915d048139&dis_t=1575982379&dis_dz=CT-ShanDong_QingDao&dis_st=103&src=iqiyi.com&dis_hit=0&uuid=3a38a81e-5def952b-fb&qd_vipres=0&qd_stert=0&qd_vipdyn=0&qd_p=3a38a81e&qd_tvid=9669691800&qd_src=01012001010000000000&qd_aid=248443601&qd_index=1&qd_vip=0&qd_ip=3a38a81e&qd_uid=0&qd_k=3e3f9bcafe273ff2f4b6f280d10be795&qd_tm=1575982378666"));
+        videoModel.multiVideoURLs.add(new VideoModel.VideoPlayerURL("流畅", "http://jcloudcdnct.inter.iqiyi.com/videos/v0/20191129/bb/7c/86ffa1afad1cc88856ed1e440e08b869.f4v?key=01d6e9cfc6908caf644a3e03430c674cf&dis_k=e09da488d57fa4e29b2f3b2dc8eb76df&dis_t=1575982380&dis_dz=CT-ShanDong_QingDao&dis_st=103&src=iqiyi.com&dis_hit=0&uuid=3a38a81e-5def952c-fc&qd_vipres=0&qd_stert=0&qd_vipdyn=0&qd_p=3a38a81e&qd_tvid=9669691800&qd_src=01012001010000000000&qd _aid=248443601&qd_index=1&qd_vip=0&qd_ip=3a38a81e&qd_uid=0&qd_k=3e3f9bcafe273ff2f4b6f280d10be795&qd_tm=1575982378666"));
         playVideoModel(videoModel);
     }
 
@@ -324,7 +183,7 @@ public class VideoPlayerActivity extends Activity implements
         // 设置播放器渲染模式
         prefs.enableHWAcceleration = true;
         prefs.renderMode = TXLiveConstants.RENDER_MODE_ADJUST_RESOLUTION;
-        prefs.playShiftDomain = "playtimeshift.live.myqcloud.com";//需要修改为自己的时移域名
+//        prefs.playShiftDomain = "playtimeshift.live.myqcloud.com";//需要修改为自己的时移域名
     }
 
     @Override
@@ -355,40 +214,6 @@ public class VideoPlayerActivity extends Activity implements
         if (mSuperPlayerView.getPlayMode() != SuperPlayerConst.PLAYMODE_FLOAT) {
             mSuperPlayerView.resetPlayer();
         }
-        VideoDataMgr.getInstance().setGetVideoInfoListListener(null);
-    }
-
-    /**
-     * 获取点播信息成功
-     */
-    @Override
-    public void onSuccess(final VideoModel videoModel) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (mDataType != LIST_TYPE_VOD) return;
-                mVodPlayerListAdapter.addSuperPlayerModel(videoModel);
-                mVodList.add(videoModel);
-            }
-        });
-    }
-
-    /**
-     * 获取点播信息失败
-     *
-     * @param errCode errCode
-     */
-    @Override
-    public void onFail(int errCode) {
-        TXCLog.i(TAG, "onFail errCode:" + errCode);
-    }
-
-    @Override
-    public void onItemClick(int position, final VideoModel videoModel) {
-        if (videoModel.appid > 0) {
-            TXLiveBase.setAppID("" + videoModel.appid);
-        }
-        playVideoModel(videoModel);
     }
 
     private void playVideoModel(VideoModel videoModel) {
@@ -397,8 +222,6 @@ public class VideoPlayerActivity extends Activity implements
 
         if (!TextUtils.isEmpty(videoModel.videoURL)) {
             superPlayerModelV3.title = videoModel.title;
-            superPlayerModelV3.url = videoModel.videoURL;
-            superPlayerModelV3.qualityName = "原画";
 
             superPlayerModelV3.multiURLs = new ArrayList<>();
             if (videoModel.multiVideoURLs != null) {
@@ -413,35 +236,6 @@ public class VideoPlayerActivity extends Activity implements
         mSuperPlayerView.playWithModel(superPlayerModelV3);
     }
 
-    private void updateList(int dataType) {
-
-        mVodPlayerListAdapter.clear();
-        switch (mDataType) {
-            case LIST_TYPE_LIVE:
-                if (mLiveList.isEmpty()) {
-                    updateLiveList();
-                } else {
-                    for (VideoModel videoModel :
-                            mLiveList) {
-                        mVodPlayerListAdapter.addSuperPlayerModel(videoModel);
-                    }
-                }
-                break;
-            case LIST_TYPE_VOD:
-                if (mVodList.isEmpty()) {
-                    updateVodList();
-                } else {
-                    for (VideoModel videoModel :
-                            mVodList) {
-                        mVodPlayerListAdapter.addSuperPlayerModel(videoModel);
-                    }
-                }
-                break;
-        }
-
-        mVodPlayerListAdapter.notifyDataSetChanged();
-    }
-
     /**
      * 悬浮窗播放
      */
@@ -451,70 +245,6 @@ public class VideoPlayerActivity extends Activity implements
         } else {
             mSuperPlayerView.resetPlayer();
             finish();
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (data == null || data.getExtras() == null || TextUtils.isEmpty(data.getExtras().getString("result"))) {
-            return;
-        }
-        String result = data.getExtras().getString("result");
-        if (requestCode == 200) {
-        } else if (requestCode == 100) {
-            // 二维码播放视频
-            playNewVideo(result);
-        }
-    }
-
-    private boolean isLivePlay(VideoModel videoModel) {
-        String videoURL = videoModel.videoURL;
-        if (TextUtils.isEmpty(videoModel.videoURL)) {
-            return false;
-        }
-        if (videoURL.startsWith("rtmp://")) {
-            return true;
-        } else if ((videoURL.startsWith("http://") || videoURL.startsWith("https://")) && videoURL.contains(".flv")) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private void playNewVideo(String result) {
-        mVideoCount++;
-        VideoModel videoModel = new VideoModel();
-        videoModel.title = "测试视频" + mVideoCount;
-        videoModel.videoURL = result;
-        videoModel.placeholderImage = "http://xiaozhibo-10055601.file.myqcloud.com/coverImg.jpg";
-        videoModel.appid = DEFAULT_APPID;
-        if (!TextUtils.isEmpty(videoModel.videoURL) && videoModel.videoURL.contains("5815.liveplay.myqcloud.com")) {
-            videoModel.appid = 1253131631;
-            TXLiveBase.setAppID("1253131631");
-            videoModel.multiVideoURLs = new ArrayList<>(3);
-            videoModel.multiVideoURLs.add(new VideoModel.VideoPlayerURL("超清", videoModel.videoURL));
-            videoModel.multiVideoURLs.add(new VideoModel.VideoPlayerURL("高清", videoModel.videoURL.replace(".flv", "_900.flv")));
-            videoModel.multiVideoURLs.add(new VideoModel.VideoPlayerURL("标清", videoModel.videoURL.replace(".flv", "_550.flv")));
-        }
-        if (!TextUtils.isEmpty(videoModel.videoURL) && videoModel.videoURL.contains("3891.liveplay.myqcloud.com")) {
-            videoModel.appid = 1252463788;
-            TXLiveBase.setAppID("1252463788");
-        }
-        playVideoModel(videoModel);
-
-        boolean needRefreshList;
-        if (isLivePlay(videoModel)) {
-            mLiveList.add(videoModel);
-            needRefreshList = mDataType == LIST_TYPE_LIVE;
-        } else {
-            mVodList.add(videoModel);
-            needRefreshList = mDataType == LIST_TYPE_VOD;
-        }
-        if (needRefreshList) {
-            mVodPlayerListAdapter.addSuperPlayerModel(videoModel);
-            mVodPlayerListAdapter.notifyDataSetChanged();
         }
     }
 
@@ -548,18 +278,5 @@ public class VideoPlayerActivity extends Activity implements
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.addCategory(Intent.CATEGORY_HOME);
         startActivity(intent);
-    }
-
-    @Override
-    public void onRefresh() {
-        if (mDefaultVideo) {
-            return;
-        }
-        if (mDataType == LIST_TYPE_VOD) {
-            mVodList.clear();
-            VideoDataMgr.getInstance().getVideoList();
-        } else {
-            updateLiveList();
-        }
     }
 }
