@@ -152,8 +152,6 @@ public class VideoPlayerActivity extends Activity implements
     private void initData() {
         initSuperVodGlobalSetting();
         VideoModel videoModel = new VideoModel();
-        videoModel.appid = DEFAULT_APP_ID;
-        videoModel.fileid = getIntent().getStringExtra("PLAY_TYPE");
         videoModel.title = "测试视频";
         videoModel.videoURL = "http://aliyuncdnct.inter.iqiyi.com/videos/v0/20191129/15/91/dee0bd77af731e45c3eafbb5fb580534.f4v?key=0c81e23151f619148602a6af95d61c348&dis_k=f9f1cf3bb16e91eeff340a1cfe1b6a25&dis_t=1575982378&dis_dz=CT-ShanDong_QingDao&dis_st=103&src=iqiyi.com&dis_hit=0&uuid=3a38a81e-5def952a-fe&qd_vipres=0&qd_stert=0&qd_vipdyn=0&qd_p=3a38a81e&qd_tvid=9669691800&qd_src=01012001010000000000&qd_aid=248443601&qd_index=1&qd_vip=0&qd_ip=3a38a81e&qd_uid=0&qd_k=3e3f9bcafe273ff2f4b6f280d10be795&qd_tm=1575982378666";
         videoModel.multiVideoURLs = new ArrayList<>();
@@ -182,8 +180,7 @@ public class VideoPlayerActivity extends Activity implements
         prefs.maxCacheItem = 5;
         // 设置播放器渲染模式
         prefs.enableHWAcceleration = true;
-        prefs.renderMode = TXLiveConstants.RENDER_MODE_ADJUST_RESOLUTION;
-//        prefs.playShiftDomain = "playtimeshift.live.myqcloud.com";//需要修改为自己的时移域名
+        prefs.renderMode = TXLiveConstants.RENDER_MODE_FULL_FILL_SCREEN;
     }
 
     @Override
