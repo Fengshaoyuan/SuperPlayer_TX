@@ -1,37 +1,27 @@
 package com.tencent.liteav.demo.player.superplayer;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.EditText;
-import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.tencent.liteav.demo.player.R;
-import com.tencent.liteav.demo.player.common.activity.QRCodeScanActivity;
 import com.tencent.liteav.demo.player.common.utils.TCConstants;
 import com.tencent.liteav.demo.player.server.GetVideoInfoListListener;
 import com.tencent.liteav.demo.player.server.VideoDataMgr;
@@ -55,9 +45,11 @@ import static android.view.View.VISIBLE;
  * Created by liyuejiao on 2018/7/3.
  * 超级播放器主Activity
  */
-public class VideoPlayerActivity extends Activity implements View.OnClickListener,
-        SuperVodListLoader.OnVodInfoLoadListener, SuperPlayerView.OnSuperPlayerViewCallback,
-        TCVodPlayerListAdapter.OnItemClickLitener, SwipeRefreshLayout.OnRefreshListener {
+public class VideoPlayerActivity extends Activity implements
+        SuperVodListLoader.OnVodInfoLoadListener,
+        SuperPlayerView.OnSuperPlayerViewCallback,
+        TCVodPlayerListAdapter.OnItemClickLitener,
+        SwipeRefreshLayout.OnRefreshListener {
     // 新手引导的标记
     private static final String SHARE_PREFERENCE_NAME = "tx_super_player_guide_setting";
     private static final String KEY_GUIDE_ONE = "is_guide_one_finish";
@@ -68,22 +60,11 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
     private static final int LIST_TYPE_VOD = 1;
 
     private Context mContext;
-    //标题
-    private RelativeLayout mLayoutTitle;
-    private ImageView mIvBack;
-    private ImageView mBtnScan;
-    private ImageButton mBtnLink;
-    private SwipeRefreshLayout mSwipeRefreshLayout;
     //超级播放器View
     private SuperPlayerView mSuperPlayerView;
-    //播放列表
-    private RecyclerView mVodPlayerListView;
     private TCVodPlayerListAdapter mVodPlayerListAdapter;
-
-    private ImageView mIvAdd;
     //进入默认播放的视频
     private int DEFAULT_APPID = 1252463788;
-    private String DEFAULT_FILEID = "4564972819220421305";
     //获取点播信息接口
     private SuperVodListLoader mSuperVodListLoader;
 
@@ -95,26 +76,11 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
     private ArrayList<VideoModel> mLiveList;
     private ArrayList<VideoModel> mVodList;
     private int mDataType = LIST_TYPE_LIVE;
-    private List<ListTabItem> mListTabs;
     private int mVideoCount;
     private boolean mVideoHasPlay;
 
-    private View mTitleMask, mListMask;
     private RelativeLayout mRlMaskOne, mRlMaskTwo;
     private TextView mTvBtnOne, mTvBtnTwo;
-
-    private static class ListTabItem {
-        public ListTabItem(int type, TextView textView, ImageView imageView, View.OnClickListener listener) {
-            this.type = type;
-            this.textView = textView;
-            this.imageView = imageView;
-            this.textView.setOnClickListener(listener);
-        }
-
-        public int type;
-        public TextView textView;
-        public ImageView imageView;
-    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -152,39 +118,20 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
     }
 
     private void initView() {
-        mLayoutTitle = (RelativeLayout) findViewById(R.id.p_layout_title);
-        mIvBack = (ImageView) findViewById(R.id.p_iv_back);
-        mIvBack.setOnClickListener(this);
-        mBtnScan = (ImageView) findViewById(R.id.p_btnScan);
-        mBtnScan.setOnClickListener(this);
-        mBtnLink = (ImageButton) findViewById(R.id.p_webrtc_link_button);
-        mBtnLink.setOnClickListener(this);
 
         mSuperPlayerView = (SuperPlayerView) findViewById(R.id.p_superVodPlayerView);
         mSuperPlayerView.setPlayerViewCallback(this);
 
-        mVodPlayerListView = (RecyclerView) findViewById(R.id.p_recycler_view);
-        mVodPlayerListView.setLayoutManager(new LinearLayoutManager(this));
         mVodPlayerListAdapter = new TCVodPlayerListAdapter(this);
         mVodPlayerListAdapter.setOnItemClickLitener(this);
-        mVodPlayerListView.setAdapter(mVodPlayerListAdapter);
-
-        mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.p_swipe_refresh_layout_list);
-        mSwipeRefreshLayout.setOnRefreshListener(this);
-        mIvAdd = (ImageView) findViewById(R.id.p_iv_add);
-        mIvAdd.setOnClickListener(this);
-
-        mListTabs = new ArrayList<>();
-        mListTabs.add(LIST_TYPE_LIVE, new ListTabItem(LIST_TYPE_LIVE, (TextView) findViewById(R.id.p_text_live), null, this));
-        mListTabs.add(LIST_TYPE_VOD, new ListTabItem(LIST_TYPE_VOD, (TextView) findViewById(R.id.p_text_vod), null, this));
 
         initNewGuideLayout();
-        initMaskLayout();
     }
 
     /**
      * 初始化新手引导布局
      */
+    @SuppressLint("ClickableViewAccessibility")
     private void initNewGuideLayout() {
         mRlMaskOne = (RelativeLayout) findViewById(R.id.p_small_rl_mask_one);
         mRlMaskOne.setOnTouchListener(new View.OnTouchListener() { // 拦截事件
@@ -233,40 +180,11 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
             public void onClick(View v) {
                 mRlMaskOne.setVisibility(GONE);
                 mRlMaskTwo.setVisibility(GONE);
-                mTitleMask.setVisibility(GONE);
-                mListMask.setVisibility(GONE);
                 SharePreferenceUtils.putBoolean(s, KEY_GUIDE_ONE, true);
                 SharePreferenceUtils.putBoolean(s, KEY_GUIDE_TWO, true);
             }
         });
 
-    }
-
-    private void initMaskLayout() {
-        mTitleMask = findViewById(R.id.p_super_view_title_mask);
-        mTitleMask.setOnClickListener(new View.OnClickListener() {// 拦截所有事件
-            @Override
-            public void onClick(View v) {
-
-            }
-        });
-        mListMask = findViewById(R.id.p_super_view_list_mask);
-        mListMask.setOnClickListener(new View.OnClickListener() { // 拦截所有事件
-            @Override
-            public void onClick(View v) {
-
-            }
-        });
-        final SharedPreferences s = SharePreferenceUtils.newInstance(this, SHARE_PREFERENCE_NAME);
-        boolean isFinishOne = SharePreferenceUtils.getBoolean(s, KEY_GUIDE_ONE);
-        boolean isFinishTwo = SharePreferenceUtils.getBoolean(s, KEY_GUIDE_TWO);
-        if (!isFinishOne || !isFinishTwo) {
-            mTitleMask.setVisibility(VISIBLE);
-            mListMask.setVisibility(VISIBLE);
-        } else {
-            mTitleMask.setVisibility(GONE);
-            mListMask.setVisibility(GONE);
-        }
     }
 
     private void initData() {
@@ -310,7 +228,6 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
                         }
                         mVodPlayerListAdapter.notifyDataSetChanged();
 
-                        mSwipeRefreshLayout.setRefreshing(false);
                     }
                 });
             }
@@ -321,7 +238,6 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        mSwipeRefreshLayout.setRefreshing(false);
                     }
                 });
             }
@@ -336,7 +252,6 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
             ArrayList<VideoModel> superPlayerModels = mSuperVodListLoader.loadDefaultVodList();
             mSuperVodListLoader.getVodInfoOneByOne(superPlayerModels);
 
-            mIvAdd.setVisibility(VISIBLE);
         } else {
             mVideoId = getIntent().getStringExtra(TCConstants.PLAYER_VIDEO_ID);
             if (!TextUtils.isEmpty(mVideoId)) {
@@ -354,7 +269,6 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
                         public void run() {
                             mVodPlayerListAdapter.clear();
                             mVodPlayerListAdapter.notifyDataSetChanged();
-                            mSwipeRefreshLayout.setRefreshing(false);
                             ArrayList<VideoModel> videoModels = VideoDataMgr.getInstance().loadVideoInfoList(videoInfoList);
                             if (videoModels != null && videoModels.size() != 0) {
                                 mSuperVodListLoader.getVodInfoOneByOne(videoModels);
@@ -369,7 +283,6 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
                         @Override
                         public void run() {
                             Toast.makeText(mContext, "获取已上传的视频列表失败", Toast.LENGTH_SHORT).show();
-                            mSwipeRefreshLayout.setRefreshing(false);
                         }
                     });
                 }
@@ -378,16 +291,13 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
             mVodList.clear();
             VideoDataMgr.getInstance().setGetVideoInfoListListener(mGetVideoInfoListListener);
             VideoDataMgr.getInstance().getVideoList();
-
-            mBtnScan.setVisibility(GONE);
-            mIvAdd.setVisibility(GONE);
         }
     }
 
-    private void playDefaultVideo(int appid, String fileid) {
+    private void playDefaultVideo(int appId, String fileId) {
         VideoModel videoModel = new VideoModel();
-        videoModel.appid = appid;
-        videoModel.fileid = fileid;
+        videoModel.appid = appId;
+        videoModel.fileid = fileId;
         videoModel.title = "小视频-特效剪辑";
         if (videoModel.appid > 0) {
             TXLiveBase.setAppID("" + videoModel.appid);
@@ -466,7 +376,7 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
     /**
      * 获取点播信息失败
      *
-     * @param errCode
+     * @param errCode errCode
      */
     @Override
     public void onFail(int errCode) {
@@ -503,40 +413,7 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
         mSuperPlayerView.playWithModel(superPlayerModelV3);
     }
 
-    @Override
-    public void onClick(View v) {
-        int id = v.getId();
-        if (id == R.id.p_iv_add) {   //[点击+添加一个点播列表项]
-            showAddVideoDialog();
-        } else if (id == R.id.p_btnScan) {  //[扫描二维码播放一个视频]
-            scanQRCode();
-        } else if (id == R.id.p_iv_back) {  //悬浮窗播放
-            showFloatWindow();
-        } else if (id == R.id.p_text_live) {
-            mDataType = LIST_TYPE_LIVE;
-            updateList(mDataType);
-        } else if (id == R.id.p_text_vod) {
-            mDataType = LIST_TYPE_VOD;
-            updateList(mDataType);
-        } else if (id == R.id.p_webrtc_link_button) {
-            showCloudLink();
-        }
-    }
-
-    private void showCloudLink() {
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setData(Uri.parse("https://cloud.tencent.com/document/product/454/18872"));
-        startActivity(intent);
-    }
-
     private void updateList(int dataType) {
-        for (ListTabItem item : mListTabs) {
-            if (item.type == dataType) {
-                item.textView.setTextColor(Color.rgb(255, 255, 255));
-            } else {
-                item.textView.setTextColor(Color.rgb(119, 119, 119));
-            }
-        }
 
         mVodPlayerListAdapter.clear();
         switch (mDataType) {
@@ -577,14 +454,6 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
         }
     }
 
-    /**
-     * 扫描二维码
-     */
-    private void scanQRCode() {
-        Intent intent = new Intent(this, QRCodeScanActivity.class);
-        startActivityForResult(intent, 100);
-    }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -614,106 +483,6 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
         }
     }
 
-    /**
-     * 点击+添加一个点播列表项
-     */
-    private void showAddVideoDialog() {
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-        final View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_new_vod_player_fileid, null);
-
-        dialog.setView(dialogView);
-
-        final EditText etAppId = (EditText) dialogView.findViewById(R.id.et_appid);
-        final EditText etFileId = (EditText) dialogView.findViewById(R.id.et_fileid);
-
-        if (mDataType == LIST_TYPE_VOD) {
-            dialog.setTitle("请设置AppID和FileID");
-        } else {
-            dialog.setTitle("请设置播放地址");
-            dialogView.findViewById(R.id.et_appid_text).setVisibility(GONE);
-            dialogView.findViewById(R.id.et_fileid_text).setVisibility(GONE);
-            etFileId.setVisibility(GONE);
-        }
-
-        dialog.setNegativeButton("取消", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-            }
-        });
-        dialog.setPositiveButton("确定",
-                new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-
-                        if (mDataType == LIST_TYPE_VOD) {
-                            String appId = etAppId.getText().toString();
-                            String fileId = etFileId.getText().toString();
-
-                            if (TextUtils.isEmpty(appId)) {
-                                Toast.makeText(mContext, "请输入正确的AppId", Toast.LENGTH_SHORT).show();
-                                return;
-                            }
-                            if (TextUtils.isEmpty(fileId)) {
-                                Toast.makeText(mContext, "请输入正确的FileId", Toast.LENGTH_SHORT).show();
-                                return;
-                            }
-                            int appid;
-                            try {
-                                appid = Integer.parseInt(appId);
-                            } catch (NumberFormatException e) {
-                                Toast.makeText(mContext, "请输入正确的AppId", Toast.LENGTH_SHORT).show();
-                                return;
-                            }
-
-                            VideoModel videoModel = new VideoModel();
-                            videoModel.appid = appid;
-                            videoModel.fileid = fileId;
-
-                            // 尝试请求fileid信息
-                            SuperVodListLoader loader = new SuperVodListLoader();
-                            loader.setOnVodInfoLoadListener(new SuperVodListLoader.OnVodInfoLoadListener() {
-                                @Override
-                                public void onSuccess(final VideoModel videoModel) {
-                                    runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            mVodPlayerListAdapter.addSuperPlayerModel(videoModel);
-                                        }
-                                    });
-                                }
-
-                                @Override
-                                public void onFail(int errCode) {
-                                    runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            Toast.makeText(mContext, "fileid请求失败", Toast.LENGTH_SHORT).show();
-                                        }
-                                    });
-                                }
-                            });
-                            loader.getVodByFileId(videoModel);
-                        } else {
-                            String playUrl = etAppId.getText().toString();
-                            if (TextUtils.isEmpty(playUrl)) {
-                                Toast.makeText(mContext, "请输入正确的播放地址", Toast.LENGTH_SHORT).show();
-                            } else {
-                                playNewVideo(playUrl);
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        mSwipeRefreshLayout.setRefreshing(false);
-                                    }
-                                });
-                            }
-                        }
-
-                    }
-                });
-        dialog.show();
-    }
-
     private void playNewVideo(String result) {
         mVideoCount++;
         VideoModel videoModel = new VideoModel();
@@ -735,7 +504,7 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
         }
         playVideoModel(videoModel);
 
-        boolean needRefreshList = false;
+        boolean needRefreshList;
         if (isLivePlay(videoModel)) {
             mLiveList.add(videoModel);
             needRefreshList = mDataType == LIST_TYPE_LIVE;
@@ -752,19 +521,11 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
     @Override
     public void onStartFullScreenPlay() {
         // 隐藏其他元素实现全屏
-        mLayoutTitle.setVisibility(GONE);
-        if (mIvAdd != null) {
-            mIvAdd.setVisibility(GONE);
-        }
     }
 
     @Override
     public void onStopFullScreenPlay() {
         // 恢复原有元素
-        mLayoutTitle.setVisibility(VISIBLE);
-        if (mIvAdd != null) {
-            mIvAdd.setVisibility(VISIBLE);
-        }
     }
 
     @Override
@@ -792,7 +553,6 @@ public class VideoPlayerActivity extends Activity implements View.OnClickListene
     @Override
     public void onRefresh() {
         if (mDefaultVideo) {
-            mSwipeRefreshLayout.setRefreshing(false);
             return;
         }
         if (mDataType == LIST_TYPE_VOD) {
